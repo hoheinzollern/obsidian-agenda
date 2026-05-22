@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Warm cream paper background -->
+  <rect width="1024" height="1024" fill="#F5EFE2"/>
+
+  <!-- Row 1: completed -->
+  <rect x="192" y="267" width="130" height="130" rx="24" fill="#00695C"/>
+  <polyline points="222,338 268,378 332,300"
+            stroke="#F5EFE2" stroke-width="26"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="372" y="320" width="460" height="24" rx="12" fill="#00695C"/>
+
+  <!-- Row 2: open task -->
+  <rect x="192" y="447" width="130" height="130" rx="24"
+        stroke="#00695C" stroke-width="18" fill="none"/>
+  <rect x="372" y="500" width="380" height="24" rx="12" fill="#00695C"/>
+
+  <!-- Row 3: open task -->
+  <rect x="192" y="627" width="130" height="130" rx="24"
+        stroke="#00695C" stroke-width="18" fill="none"/>
+  <rect x="372" y="680" width="300" height="24" rx="12" fill="#00695C"/>
+</svg>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#F5EFE2</color>
+
+    <!-- Widget palette (light mode). values-night/colors.xml supplies the
+         dark counterparts; Android 12+ picks per system theme. -->
+    <!-- Panel is fully opaque; widget_opacity setting controls the
+         live alpha via View.setAlpha at render time. -->
+    <color name="widget_panel">#FAFAFA</color>
+    <color name="widget_divider">#22000000</color>
+    <color name="widget_title">#212121</color>
+    <color name="widget_secondary">#666666</color>
+    <color name="widget_empty">#888888</color>
+
+    <color name="widget_chip_bg">#11000000</color>
+    <color name="widget_chip_bg_selected">#FFE9D2</color>
+    <color name="widget_chip_border_selected">#00695C</color>
+
+    <color name="widget_chip_overdue">#D32F2F</color>
+    <color name="widget_chip_today">#1976D2</color>
+    <color name="widget_chip_week">#388E3C</color>
+    <color name="widget_chip_next30">#F57C00</color>
+    <color name="widget_chip_floating">#555555</color>
+
+    <color name="widget_check_mark">#00695C</color>
+    <color name="widget_pressed">#22000000</color>
+</resources>

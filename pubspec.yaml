@@ -1,0 +1,55 @@
+name: gtd
+description: >
+  Obsidian Agenda — an org-agenda-style dashboard for tasks stored in your
+  Obsidian vault using the Obsidian Tasks plugin format. Runs on macOS and
+  Android.
+repository: https://github.com/hoheinzollern/obsidian-agenda
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  intl: ^0.19.0
+  shared_preferences: ^2.3.2
+  permission_handler: ^12.0.1
+  path: ^1.9.0
+  url_launcher: ^6.3.1
+  file_selector: ^1.0.3
+  table_calendar: ^3.1.3
+  args: ^2.5.0
+  # 0.8 transitively pulls androidx.glance:glance-appwidget which needs
+  # compileSdk 37 + AGP 9.1; pinning to 0.7 keeps us on the RemoteViews
+  # path that our AgendaWidgetReceiver actually uses.
+  home_widget: ^0.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  android: "ic_launcher"
+  adaptive_icon_background: "#F5EFE2"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_foreground.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 256
+  ios: false
+  web:
+    generate: false

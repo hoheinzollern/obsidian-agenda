@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App is unsigned and sideloaded. Sandbox would block dart:io from
+	     reading the vault, which lives anywhere the user keeps it.
+	     macOS still gates ~/Documents, ~/Desktop, ~/Downloads, ~/Library
+	     etc. via the system TCC dialog when first touched. -->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+</dict>
+</plist>

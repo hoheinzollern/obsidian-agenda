@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/status_picker_bg"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/status_picker_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="14dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="14dp"
+        android:textColor="@color/widget_title"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <LinearLayout
+        android:id="@+id/status_picker_row_todo"
+        style="@style/StatusPickerRow">
+        <ImageView style="@style/StatusPickerIcon"
+            android:src="@drawable/widget_check_blank" />
+        <TextView style="@style/StatusPickerLabel"
+            android:text="TODO" />
+        <ImageView android:id="@+id/status_picker_check_todo"
+            style="@style/StatusPickerCheck" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/status_picker_row_wait"
+        style="@style/StatusPickerRow">
+        <ImageView style="@style/StatusPickerIcon"
+            android:src="@drawable/widget_check_wait" />
+        <TextView style="@style/StatusPickerLabel"
+            android:text="WAIT" />
+        <ImageView android:id="@+id/status_picker_check_wait"
+            style="@style/StatusPickerCheck" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/status_picker_row_done"
+        style="@style/StatusPickerRow">
+        <ImageView style="@style/StatusPickerIcon"
+            android:src="@drawable/widget_check_done" />
+        <TextView style="@style/StatusPickerLabel"
+            android:text="DONE" />
+        <ImageView android:id="@+id/status_picker_check_done"
+            style="@style/StatusPickerCheck" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/status_picker_row_cancelled"
+        style="@style/StatusPickerRow">
+        <ImageView style="@style/StatusPickerIcon"
+            android:src="@drawable/widget_check_cancelled" />
+        <TextView style="@style/StatusPickerLabel"
+            android:text="CANCELLED" />
+        <ImageView android:id="@+id/status_picker_check_cancelled"
+            style="@style/StatusPickerCheck" />
+    </LinearLayout>
+
+</LinearLayout>

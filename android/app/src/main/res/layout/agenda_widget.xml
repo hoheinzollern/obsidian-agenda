@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Panel backdrop. Alpha is set live by AgendaWidgetReceiver
+         from the widget_opacity preference. -->
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_background"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_chip_overdue"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                android:gravity="center"
+                android:padding="6dp"
+                android:textColor="@color/widget_chip_overdue"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/widget_chip"
+                android:text="⚠️ 0" />
+
+            <TextView
+                android:id="@+id/widget_chip_today"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:gravity="center"
+                android:padding="6dp"
+                android:textColor="@color/widget_chip_today"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/widget_chip"
+                android:text="📅 0" />
+
+            <TextView
+                android:id="@+id/widget_chip_week"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:gravity="center"
+                android:padding="6dp"
+                android:textColor="@color/widget_chip_week"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/widget_chip"
+                android:text="📆 0" />
+
+            <TextView
+                android:id="@+id/widget_chip_next30"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:gravity="center"
+                android:padding="6dp"
+                android:textColor="@color/widget_chip_next30"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/widget_chip"
+                android:text="🔜 0" />
+
+            <TextView
+                android:id="@+id/widget_chip_floating"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:gravity="center"
+                android:padding="6dp"
+                android:textColor="@color/widget_chip_floating"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/widget_chip"
+                android:text="📂 0" />
+
+            <ImageView
+                android:id="@+id/widget_add_inbox"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:padding="4dp"
+                android:src="@drawable/widget_add"
+                android:contentDescription="Add to inbox" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:background="@color/widget_divider" />
+
+        <ListView
+            android:id="@+id/widget_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:divider="@null"
+            android:dividerHeight="0dp" />
+
+        <TextView
+            android:id="@+id/widget_empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:textColor="@color/widget_empty"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:text="Nothing here" />
+
+    </LinearLayout>
+</FrameLayout>

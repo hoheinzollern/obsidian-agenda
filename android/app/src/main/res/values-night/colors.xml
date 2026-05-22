@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1E1E1E</color>
+
+    <color name="widget_panel">#1F1F1F</color>
+    <color name="widget_divider">#33FFFFFF</color>
+    <color name="widget_title">#FAFAFA</color>
+    <color name="widget_secondary">#BBBBBB</color>
+    <color name="widget_empty">#999999</color>
+
+    <color name="widget_chip_bg">#22FFFFFF</color>
+    <color name="widget_chip_bg_selected">#332BBBA9</color>
+    <color name="widget_chip_border_selected">#80CBC4</color>
+
+    <color name="widget_chip_overdue">#FF8A80</color>
+    <color name="widget_chip_today">#82B1FF</color>
+    <color name="widget_chip_week">#A5D6A7</color>
+    <color name="widget_chip_next30">#FFD180</color>
+    <color name="widget_chip_floating">#BBBBBB</color>
+
+    <color name="widget_check_mark">#80CBC4</color>
+    <color name="widget_pressed">#22FFFFFF</color>
+</resources>
