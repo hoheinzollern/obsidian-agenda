@@ -16,18 +16,16 @@ class AgendaWidgetService : RemoteViewsService() {
 class AgendaWidgetFactory(private val context: Context) :
     RemoteViewsService.RemoteViewsFactory {
 
-    private var tasks: List<JSONObject> = emptyList()
+    private var items: List<JSONObject> = emptyList()
     private var vaultName: String = ""
 
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
         val prefs = HomeWidgetPlugin.getData(context)
-        val bucket = prefs.getString("agenda_selected_bucket", "today") ?: "today"
-        val key = "agenda_${bucket}_json"
-        val json = prefs.getString(key, "[]") ?: "[]"
+        val json = prefs.getString("agenda_combined_json", "[]") ?: "[]"
         vaultName = prefs.getString("agenda_vault_name", "") ?: ""
-        tasks = try {
+        items = try {
             val arr = JSONArray(json)
             (0 until arr.length()).map { arr.getJSONObject(it) }
         } catch (e: Exception) {
@@ -36,13 +34,30 @@ class AgendaWidgetFactory(private val context: Context) :
     }
 
     override fun onDestroy() {
-        tasks = emptyList()
+        items = emptyList()
     }
 
-    override fun getCount(): Int = tasks.size
+    override fun getCount(): Int = items.size
 
     override fun getViewAt(position: Int): RemoteViews {
-        val t = tasks[position]
+        val item = items[position]
+        return when (item.optString("type")) {
+            "header" -> headerView(item)
+            "filler" -> RemoteViews(context.packageName, R.layout.agenda_widget_filler)
+            else -> taskView(item)
+        }
+    }
+
+    private fun headerView(item: JSONObject): RemoteViews {
+        val row = RemoteViews(context.packageName, R.layout.agenda_widget_header)
+        row.setTextViewText(
+            R.id.widget_header_label,
+            "${item.optString("emoji")} ${item.optString("label")} (${item.optInt("count")})"
+        )
+        return row
+    }
+
+    private fun taskView(t: JSONObject): RemoteViews {
         val row = RemoteViews(context.packageName, R.layout.agenda_widget_item)
 
         val status = t.optString("status", " ")
@@ -55,7 +70,6 @@ class AgendaWidgetFactory(private val context: Context) :
         row.setImageViewResource(R.id.widget_row_checkbox, drawableFor(status))
         row.setTextViewText(R.id.widget_row_title, desc)
 
-        // Tags line: "#admin · #hop · 📂 admin"
         val tagsArr = t.optJSONArray("tags")
         val source = t.optString("source", "")
         val tagBits = mutableListOf<String>()
@@ -67,15 +81,14 @@ class AgendaWidgetFactory(private val context: Context) :
         if (source.isNotEmpty()) tagBits.add("📂 $source")
         if (tagBits.isNotEmpty()) {
             row.setTextViewText(
-                R.id.widget_row_tags,
-                tagBits.joinToString(" · ")
+                R.id.widget_row_tags, tagBits.joinToString(" · ")
             )
             row.setViewVisibility(R.id.widget_row_tags, android.view.View.VISIBLE)
         } else {
             row.setViewVisibility(R.id.widget_row_tags, android.view.View.GONE)
         }
 
-        // Body tap (title + tags column) → open the note in Obsidian.
+        // Body tap → open the note in Obsidian.
         val openIntent = Intent().apply {
             putExtra(EXTRA_ACTION, ACTION_OPEN)
             putExtra(EXTRA_REL_PATH, relPath)
@@ -94,7 +107,7 @@ class AgendaWidgetFactory(private val context: Context) :
         }
         row.setOnClickFillInIntent(R.id.widget_row_checkbox, toggleIntent)
 
-        // ⋮ tap → state picker for all four states.
+        // ⋮ tap → state picker.
         val pickIntent = Intent().apply {
             putExtra(EXTRA_ACTION, ACTION_PICK_STATUS)
             putExtra(EXTRA_PATH, absPath)
@@ -109,7 +122,7 @@ class AgendaWidgetFactory(private val context: Context) :
     }
 
     override fun getLoadingView(): RemoteViews? = null
-    override fun getViewTypeCount(): Int = 1
+    override fun getViewTypeCount(): Int = 3
     override fun getItemId(position: Int): Long = position.toLong()
     override fun hasStableIds(): Boolean = false
 

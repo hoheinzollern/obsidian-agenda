@@ -45,6 +45,7 @@ Future<int> main(List<String> argv) async {
     ..addCommand(StatusCommand('cancel', 'Mark a task CANCELLED (writes ❌ date).', '-'))
     ..addCommand(StatusCommand('wait', 'Set a task to WAIT (in progress).', '/'))
     ..addCommand(StatusCommand('todo', 'Reopen a task as TODO.', ' '))
+    ..addCommand(RescheduleCommand())
     ..addCommand(ScanCommand())
     ..addCommand(ConfigCommand());
 
@@ -503,6 +504,82 @@ class StatusCommand extends Command<int> {
 }
 
 // ============== scan ==============
+
+// ============== reschedule ==============
+
+class RescheduleCommand extends Command<int> {
+  @override
+  String get name => 'reschedule';
+
+  @override
+  String get description =>
+      'Set, change, or clear a task\'s due date.';
+
+  @override
+  String get invocation =>
+      'agenda reschedule <file>:<line> <when>\n'
+      '  where <when> is one of: YYYY-MM-DD, today, tomorrow,\n'
+      '  +Nd (N days from today), +Nw (N weeks from today), clear';
+
+  @override
+  Future<int> run() async {
+    final vault = _resolveVault(globalResults);
+    final color = _useColor(globalResults);
+    final rest = argResults?.rest ?? const [];
+    if (rest.length != 2) {
+      throw _CliError('Expected: reschedule <file>:<line> <when>');
+    }
+    final ref = _resolveRef(rest[0], vault);
+    final when = rest[1];
+
+    DateTime? target;
+    final today = _today();
+    if (when == 'clear' || when == 'none') {
+      target = null;
+    } else if (when == 'today') {
+      target = today;
+    } else if (when == 'tomorrow') {
+      target = today.add(const Duration(days: 1));
+    } else {
+      final relMatch = RegExp(r'^\+(\d+)([dw])$').firstMatch(when);
+      if (relMatch != null) {
+        final n = int.parse(relMatch.group(1)!);
+        final unit = relMatch.group(2)!;
+        target = today.add(Duration(days: unit == 'w' ? n * 7 : n));
+      } else {
+        target = DateTime.tryParse(when);
+        if (target == null) {
+          throw _CliError(
+            'Invalid <when>: $when. Use YYYY-MM-DD, today, tomorrow, +Nd, +Nw, or clear.',
+          );
+        }
+      }
+    }
+
+    final file = File(ref.absPath);
+    final lines = await file.readAsLines();
+    if (ref.lineIndex < 0 || ref.lineIndex >= lines.length) {
+      throw _CliError('Line ${ref.lineIndex + 1} out of range.');
+    }
+    final raw = lines[ref.lineIndex];
+    final parsed = GtdParser.parseLine(
+      line: raw,
+      filePath: ref.absPath,
+      lineNumber: ref.lineIndex,
+    );
+    if (parsed == null) {
+      throw _CliError('Line ${ref.lineIndex + 1} is not a task line.');
+    }
+    final newLine = await TaskWriter().setDueDate(parsed, target);
+    if (newLine == null) {
+      throw _CliError('Could not update — file changed between read and write.');
+    }
+    print('${_colored('✓', '32', color)} ${rest[0]} → '
+        '${target == null ? '(no date)' : DateFormat('yyyy-MM-dd').format(target)}');
+    print('  $newLine');
+    return 0;
+  }
+}
 
 // ============== config ==============
 

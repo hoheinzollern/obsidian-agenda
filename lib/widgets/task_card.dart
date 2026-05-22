@@ -14,6 +14,10 @@ class TaskCard extends StatelessWidget {
   /// Called when the user taps the card body — opens the source in Obsidian.
   final VoidCallback onOpen;
 
+  /// Reschedule the task to a new due date (null = clear the date). Triggered
+  /// from the long-press menu or from a long-press on the date chip itself.
+  final void Function(DateTime? newDue)? onReschedule;
+
   /// Tag / folder / date filter toggles. Optional — if null, those chips
   /// render as plain decorations like before.
   final void Function(String tag)? onToggleTagFilter;
@@ -30,6 +34,7 @@ class TaskCard extends StatelessWidget {
     required this.task,
     required this.onChangeStatus,
     required this.onOpen,
+    this.onReschedule,
     this.onToggleTagFilter,
     this.onToggleFolderFilter,
     this.onToggleDateFilter,
@@ -41,14 +46,48 @@ class TaskCard extends StatelessWidget {
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
   Future<void> _openMenuAt(BuildContext context, Offset globalPos) async {
-    final picked = await _showStatusMenu(context, task.status, globalPos);
-    if (picked != null && picked != task.status) onChangeStatus(picked);
+    final picked = await _showCardMenu(context, task, globalPos);
+    if (picked == null || !context.mounted) return;
+    await _applyAction(context, picked);
+  }
+
+  Future<void> _applyAction(BuildContext context, _CardAction action) async {
+    switch (action) {
+      case _SetStatus(:final status):
+        if (status != task.status) onChangeStatus(status);
+        return;
+      case _RescheduleTo(:final date):
+        if (onReschedule != null) onReschedule!(date);
+        return;
+      case _ReschedulePick():
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: task.dueDate ?? DateTime.now(),
+          firstDate: DateTime(DateTime.now().year - 1),
+          lastDate: DateTime(DateTime.now().year + 5),
+        );
+        if (picked != null && onReschedule != null) onReschedule!(picked);
+        return;
+    }
   }
 
   Future<void> _openMenuFromWidget(BuildContext context) async {
     final box = context.findRenderObject()! as RenderBox;
     final pos = box.localToGlobal(Offset(box.size.width / 2, box.size.height));
     await _openMenuAt(context, pos);
+  }
+
+  /// Long-press on the due-date chip → date picker.
+  Future<void> _pickDateFromChip(BuildContext context) async {
+    if (onReschedule == null) return;
+    final initial = task.dueDate ?? task.scheduledDate ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(DateTime.now().year - 1),
+      lastDate: DateTime(DateTime.now().year + 5),
+    );
+    if (picked != null) onReschedule!(picked);
   }
 
   @override
@@ -111,6 +150,9 @@ class TaskCard extends StatelessWidget {
                               onTap: onToggleDateFilter == null
                                   ? null
                                   : () => onToggleDateFilter!(_dayOf(task.dueDate!)),
+                              onLongPress: onReschedule == null
+                                  ? null
+                                  : () => _pickDateFromChip(context),
                             ),
                           if (task.scheduledDate != null &&
                               task.dueDate == null)
@@ -122,6 +164,9 @@ class TaskCard extends StatelessWidget {
                               onTap: onToggleDateFilter == null
                                   ? null
                                   : () => onToggleDateFilter!(_dayOf(task.scheduledDate!)),
+                              onLongPress: onReschedule == null
+                                  ? null
+                                  : () => _pickDateFromChip(context),
                             ),
                           _Chip(
                             icon: Icons.folder_outlined,
@@ -215,13 +260,36 @@ class _StatusButton extends StatelessWidget {
 
 // --- shared menu helpers ---
 
-Future<TaskStatus?> _showStatusMenu(
+sealed class _CardAction {
+  const _CardAction();
+}
+
+class _SetStatus extends _CardAction {
+  final TaskStatus status;
+  const _SetStatus(this.status);
+}
+
+class _RescheduleTo extends _CardAction {
+  /// null = clear the due date.
+  final DateTime? date;
+  const _RescheduleTo(this.date);
+}
+
+class _ReschedulePick extends _CardAction {
+  const _ReschedulePick();
+}
+
+Future<_CardAction?> _showCardMenu(
   BuildContext context,
-  TaskStatus current,
+  Task task,
   Offset globalPos,
 ) async {
   final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
-  return showMenu<TaskStatus>(
+  final today = DateTime.now();
+  final today0 = DateTime(today.year, today.month, today.day);
+  final tomorrow = today0.add(const Duration(days: 1));
+  final inAWeek = today0.add(const Duration(days: 7));
+  return showMenu<_CardAction>(
     context: context,
     position: RelativeRect.fromLTRB(
       globalPos.dx,
@@ -231,8 +299,8 @@ Future<TaskStatus?> _showStatusMenu(
     ),
     items: [
       for (final s in TaskStatus.values)
-        PopupMenuItem<TaskStatus>(
-          value: s,
+        PopupMenuItem<_CardAction>(
+          value: _SetStatus(s),
           child: Row(
             children: [
               Icon(_statusIcon(s),
@@ -240,7 +308,7 @@ Future<TaskStatus?> _showStatusMenu(
               const SizedBox(width: 10),
               Text(_statusLabel(s)),
               const Spacer(),
-              if (s == current)
+              if (s == task.status)
                 const Padding(
                   padding: EdgeInsets.only(left: 12),
                   child: Icon(Icons.check, size: 16),
@@ -248,8 +316,46 @@ Future<TaskStatus?> _showStatusMenu(
             ],
           ),
         ),
+      const PopupMenuDivider(),
+      PopupMenuItem<_CardAction>(
+        value: _RescheduleTo(tomorrow),
+        child: const _RescheduleRow(label: 'Reschedule to tomorrow'),
+      ),
+      PopupMenuItem<_CardAction>(
+        value: _RescheduleTo(inAWeek),
+        child: const _RescheduleRow(label: 'Reschedule +1 week'),
+      ),
+      const PopupMenuItem<_CardAction>(
+        value: _ReschedulePick(),
+        child: _RescheduleRow(label: 'Reschedule to…'),
+      ),
+      if (task.dueDate != null)
+        const PopupMenuItem<_CardAction>(
+          value: _RescheduleTo(null),
+          child: _RescheduleRow(
+            label: 'Clear due date',
+            icon: Icons.event_busy,
+          ),
+        ),
     ],
   );
+}
+
+class _RescheduleRow extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  const _RescheduleRow({required this.label, this.icon = Icons.event});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 10),
+        Text(label),
+      ],
+    );
+  }
 }
 
 IconData _statusIcon(TaskStatus s) {
@@ -296,6 +402,7 @@ class _Chip extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool active;
 
   const _Chip({
@@ -303,6 +410,7 @@ class _Chip extends StatelessWidget {
     required this.label,
     required this.color,
     this.onTap,
+    this.onLongPress,
     this.active = false,
   });
 
@@ -332,9 +440,11 @@ class _Chip extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null) return chip;
+    if (onTap == null && onLongPress == null) return chip;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
+      onSecondaryTap: onLongPress,
       borderRadius: BorderRadius.circular(10),
       child: chip,
     );

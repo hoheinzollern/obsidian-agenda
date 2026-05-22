@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
+import org.json.JSONObject
 
 class AgendaWidgetReceiver : HomeWidgetProvider() {
 
@@ -21,6 +22,14 @@ class AgendaWidgetReceiver : HomeWidgetProvider() {
     ) {
         val selected = widgetData.getString("agenda_selected_bucket", "today") ?: "today"
         val opacityPct = widgetData.getInt("agenda_widget_opacity", 90).coerceIn(0, 100)
+        val headerIndices = try {
+            JSONObject(widgetData.getString("agenda_header_indices", "{}") ?: "{}")
+        } catch (e: Exception) {
+            JSONObject()
+        }
+        val totalTasks = buckets.sumOf {
+            widgetData.getInt("agenda_${it}_count", 0)
+        }
 
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.agenda_widget)
@@ -37,10 +46,9 @@ class AgendaWidgetReceiver : HomeWidgetProvider() {
             renderChip(views, R.id.widget_chip_floating, "floating", "📂",
                 widgetData.getInt("agenda_floating_count", 0), selected, context, widgetId)
 
-            // Wire the ListView to the RemoteViewsService.
             val serviceIntent = Intent(context, AgendaWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
             views.setRemoteAdapter(R.id.widget_list, serviceIntent)
 
@@ -53,26 +61,31 @@ class AgendaWidgetReceiver : HomeWidgetProvider() {
             )
             views.setPendingIntentTemplate(R.id.widget_list, rowPending)
 
-            val count = widgetData.getInt("agenda_${selected}_count", 0)
-            if (count > 0) {
+            if (totalTasks > 0) {
                 views.setViewVisibility(R.id.widget_list, android.view.View.VISIBLE)
                 views.setViewVisibility(R.id.widget_empty, android.view.View.GONE)
+                // Drive scroll position so the chosen bucket's header is at top.
+                val targetIdx = headerIndices.optInt(selected, 0)
+                views.setScrollPosition(R.id.widget_list, targetIdx)
             } else {
                 views.setViewVisibility(R.id.widget_list, android.view.View.GONE)
                 views.setViewVisibility(R.id.widget_empty, android.view.View.VISIBLE)
             }
 
-            // Tap on empty state opens the main app.
-            context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-                val pi = PendingIntent.getActivity(
-                    context, 0, it,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-                views.setOnClickPendingIntent(R.id.widget_empty, pi)
-            }
+            // Empty state tap → open main app.
+            val launchAppPi = context.packageManager
+                .getLaunchIntentForPackage(context.packageName)?.let {
+                    PendingIntent.getActivity(
+                        context, 0, it,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                }
+            launchAppPi?.let { views.setOnClickPendingIntent(R.id.widget_empty, it) }
 
-            // Tap on "+" → launches the app with a URI the Flutter side
-            // recognises as "open quick-add sheet".
+            // Open-app icon (📋) → launches MainActivity, no deep link.
+            launchAppPi?.let { views.setOnClickPendingIntent(R.id.widget_open_app, it) }
+
+            // "+" icon → app with quick-add URI.
             val quickAddPi = HomeWidgetLaunchIntent.getActivity(
                 context,
                 MainActivity::class.java,
@@ -101,7 +114,6 @@ class AgendaWidgetReceiver : HomeWidgetProvider() {
         else R.drawable.widget_chip
         views.setInt(viewId, "setBackgroundResource", bg)
 
-        // Each chip click broadcasts the new selected bucket.
         val intent = Intent(context, AgendaSetFilterReceiver::class.java).apply {
             action = AgendaSetFilterReceiver.ACTION_SET
             putExtra(AgendaSetFilterReceiver.EXTRA_BUCKET, bucket)

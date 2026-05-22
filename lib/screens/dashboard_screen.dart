@@ -290,6 +290,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await _reload();
   }
 
+  Future<void> _reschedule(Task task, DateTime? newDue) async {
+    final newLine = await _writer.setDueDate(task, newDue);
+    if (newLine == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not reschedule — source file changed since loading. Pull to refresh.',
+          ),
+        ),
+      );
+      return;
+    }
+    await _reload();
+  }
+
   // ---- bucketing ----
 
   DateTime get _today {
@@ -573,6 +589,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     task: t,
                     onChangeStatus: (s) => _changeStatus(t, s),
                     onOpen: () => _openInObsidian(t),
+                    onReschedule: (d) => _reschedule(t, d),
                     onToggleTagFilter: _toggleTagFilter,
                     onToggleFolderFilter: _toggleFolderFilter,
                     onToggleDateFilter: _toggleDateFilter,

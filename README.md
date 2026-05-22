@@ -123,6 +123,7 @@ Subcommands:
 | `today`, `overdue`, `week`, `next30`, `floating` | Shortcuts for `list <bucket>`. |
 | `add <description...>` | Append to `<vault>/inbox.md`. `--due YYYY-MM-DD`, `--prio {highest,high,medium,low,lowest,none}`, `--tag X` (repeatable). |
 | `done`, `cancel`, `wait`, `todo` | Set a task's status, identified by `<file>:<line>` (line number 1-based). |
+| `reschedule <ref> <when>` | Change a task's `📅` due date. `<when>` is `YYYY-MM-DD`, `today`, `tomorrow`, `+Nd`, `+Nw`, or `clear`. |
 | `config {get,set,show,path}` | Read or write the stored config. |
 | `scan` | Vault summary — files, totals, parse errors. |
 

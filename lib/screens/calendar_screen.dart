@@ -94,6 +94,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await _load();
   }
 
+  Future<void> _reschedule(Task task, DateTime? newDue) async {
+    final newLine = await _writer.setDueDate(task, newDue);
+    if (newLine == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Could not reschedule — source file changed since loading. Reload.'),
+        ),
+      );
+      return;
+    }
+    await _load();
+  }
+
   Future<void> _openInObsidian(Task task) async {
     if (_vaultPath == null) return;
     await _launcher.openTask(
@@ -181,6 +196,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           formatButtonShowsNext: false,
                           titleCentered: true,
                         ),
+                        calendarBuilders: CalendarBuilders<Task>(
+                          defaultBuilder: (ctx, day, focused) =>
+                              _dropTargetCell(ctx, day, _DayKind.normal),
+                          todayBuilder: (ctx, day, focused) =>
+                              _dropTargetCell(ctx, day, _DayKind.today),
+                          selectedBuilder: (ctx, day, focused) =>
+                              _dropTargetCell(ctx, day, _DayKind.selected),
+                          outsideBuilder: (ctx, day, focused) =>
+                              _dropTargetCell(ctx, day, _DayKind.outside),
+                        ),
                       ),
                     ),
                     Padding(
@@ -219,17 +244,122 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           : ListView(
                               padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
                               children: _eventsForDay(_selectedDay)
-                                  .map((t) => TaskCard(
-                                        task: t,
-                                        onChangeStatus: (s) =>
-                                            _changeStatus(t, s),
-                                        onOpen: () => _openInObsidian(t),
+                                  .map((t) => LongPressDraggable<Task>(
+                                        data: t,
+                                        delay: const Duration(milliseconds: 280),
+                                        feedback: Material(
+                                          color: Colors.transparent,
+                                          child: SizedBox(
+                                            width: MediaQuery.of(context).size.width - 24,
+                                            child: Opacity(
+                                              opacity: 0.85,
+                                              child: TaskCard(
+                                                task: t,
+                                                onChangeStatus: (_) {},
+                                                onOpen: () {},
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.4,
+                                          child: TaskCard(
+                                            task: t,
+                                            onChangeStatus: (_) {},
+                                            onOpen: () {},
+                                          ),
+                                        ),
+                                        child: TaskCard(
+                                          task: t,
+                                          onChangeStatus: (s) =>
+                                              _changeStatus(t, s),
+                                          onOpen: () => _openInObsidian(t),
+                                          onReschedule: (d) =>
+                                              _reschedule(t, d),
+                                        ),
                                       ))
                                   .toList(),
                             ),
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _dropTargetCell(BuildContext context, DateTime day, _DayKind kind) {
+    final theme = Theme.of(context);
+    return DragTarget<Task>(
+      onWillAcceptWithDetails: (_) => true,
+      onAcceptWithDetails: (details) {
+        final task = details.data;
+        final target = DateTime(day.year, day.month, day.day);
+        // Skip the no-op (dropped on a day that's already the due date).
+        final existing = task.dueDate ?? task.scheduledDate;
+        if (existing != null &&
+            existing.year == day.year &&
+            existing.month == day.month &&
+            existing.day == day.day) {
+          return;
+        }
+        _reschedule(task, target);
+      },
+      builder: (ctx, candidates, _) {
+        final hovering = candidates.isNotEmpty;
+        return _DayCell(day: day, kind: kind, dropHovering: hovering, theme: theme);
+      },
+    );
+  }
+}
+
+enum _DayKind { normal, today, selected, outside }
+
+class _DayCell extends StatelessWidget {
+  final DateTime day;
+  final _DayKind kind;
+  final bool dropHovering;
+  final ThemeData theme;
+
+  const _DayCell({
+    required this.day,
+    required this.kind,
+    required this.dropHovering,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color? bg;
+    Color fg = theme.textTheme.bodyMedium?.color ?? Colors.black;
+    if (kind == _DayKind.selected) {
+      bg = theme.colorScheme.primary;
+      fg = theme.colorScheme.onPrimary;
+    } else if (kind == _DayKind.today) {
+      bg = theme.colorScheme.primaryContainer;
+      fg = theme.colorScheme.onPrimaryContainer;
+    } else if (kind == _DayKind.outside) {
+      fg = theme.colorScheme.outline;
+    }
+    return Container(
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: dropHovering
+            ? theme.colorScheme.tertiaryContainer
+            : bg,
+        shape: BoxShape.circle,
+        border: dropHovering
+            ? Border.all(color: theme.colorScheme.tertiary, width: 2)
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '${day.day}',
+        style: TextStyle(
+          color: dropHovering ? theme.colorScheme.onTertiaryContainer : fg,
+          fontWeight: kind == _DayKind.today || kind == _DayKind.selected
+              ? FontWeight.bold
+              : FontWeight.normal,
+        ),
+      ),
     );
   }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tall blank row appended to the end of the agenda ListView so that
+     ListView.setSelection on the last bucket's header still lands the
+     header at the top of the visible area. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="800dp" />

@@ -12,6 +12,7 @@ import '../models/task.dart';
 class TaskWriter {
   static final _doneStamp = RegExp(r'\s*✅\s*\d{4}-\d{2}-\d{2}');
   static final _cancelledStamp = RegExp(r'\s*❌\s*\d{4}-\d{2}-\d{2}');
+  static final _dueStamp = RegExp(r'\s*📅\s*\d{4}-\d{2}-\d{2}');
   static final _checkbox = RegExp(r'^(\s*- \[)([ xX/\-])(\])');
 
   /// Quick toggle: flip between todo and done (the most common case).
@@ -20,6 +21,30 @@ class TaskWriter {
   Future<String?> toggle(Task task) {
     final next = task.isDone ? TaskStatus.todo : TaskStatus.done;
     return setStatus(task, next);
+  }
+
+  /// Replace (or remove) the task's due date `📅 YYYY-MM-DD`. Pass
+  /// `null` to strip any existing due stamp.
+  Future<String?> setDueDate(Task task, DateTime? newDate) async {
+    final file = File(task.filePath);
+    final lines = await file.readAsLines();
+
+    if (task.lineNumber < 0 || task.lineNumber >= lines.length) return null;
+    if (lines[task.lineNumber] != task.rawLine) return null;
+
+    var newLine = lines[task.lineNumber].replaceAll(_dueStamp, '');
+    if (newDate != null) {
+      final stamp = DateFormat('yyyy-MM-dd').format(newDate);
+      newLine = '${newLine.trimRight()} 📅 $stamp';
+    }
+    newLine = newLine.replaceAll(RegExp(r' {2,}'), ' ').trimRight();
+
+    lines[task.lineNumber] = newLine;
+    final originalContent = await file.readAsString();
+    final endsWithNewline = originalContent.endsWith('\n');
+    final out = lines.join('\n') + (endsWithNewline ? '\n' : '');
+    await file.writeAsString(out, flush: true);
+    return newLine;
   }
 
   /// Set the task to any of the four Obsidian Tasks states.

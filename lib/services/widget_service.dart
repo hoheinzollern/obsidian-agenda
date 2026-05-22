@@ -31,21 +31,46 @@ class WidgetService {
     if (!Platform.isAndroid) return;
     try {
       final vaultName = p.basename(vaultPath);
-      String enc(List<Task> ts) => jsonEncode(
-            ts.take(_perBucketCap).map((t) {
-              final rel = p.relative(t.filePath, from: vaultPath);
-              return {
-                'description': t.description,
-                'path': t.filePath,
-                'rel_path': rel,
-                'line': t.lineNumber,
-                'status': t.status.marker,
-                'raw_line': t.rawLine,
-                'tags': t.tags,
-                'source': t.sourceLabel,
-              };
-            }).toList(),
-          );
+
+      // Build one combined list with header rows interleaved with task
+      // rows. The widget renders the whole thing into a single ListView;
+      // chips drive setScrollPosition by looking up the header's index.
+      final combined = <Map<String, dynamic>>[];
+      final headerIndices = <String, int>{};
+
+      void addBucket(String id, String emoji, String label, List<Task> tasks) {
+        headerIndices[id] = combined.length;
+        combined.add({
+          'type': 'header',
+          'bucket': id,
+          'emoji': emoji,
+          'label': label,
+          'count': tasks.length,
+        });
+        for (final t in tasks.take(_perBucketCap)) {
+          final rel = p.relative(t.filePath, from: vaultPath);
+          combined.add({
+            'type': 'task',
+            'description': t.description,
+            'path': t.filePath,
+            'rel_path': rel,
+            'line': t.lineNumber,
+            'status': t.status.marker,
+            'raw_line': t.rawLine,
+            'tags': t.tags,
+            'source': t.sourceLabel,
+          });
+        }
+      }
+
+      addBucket('overdue', '⚠️', 'Overdue', overdue);
+      addBucket('today', '📅', 'Today', today);
+      addBucket('week', '📆', 'This week', week);
+      addBucket('next30', '🔜', 'Next 30 days', next30);
+      addBucket('floating', '📂', 'Floating', floating);
+      // Tall blank tail so ListView.setSelection on the last bucket's
+      // header still lands the header at the top of the viewport.
+      combined.add({'type': 'filler'});
 
       await HomeWidget.saveWidgetData<int>(
           'agenda_overdue_count', overdue.length);
@@ -56,12 +81,10 @@ class WidgetService {
       await HomeWidget.saveWidgetData<int>(
           'agenda_floating_count', floating.length);
 
-      await HomeWidget.saveWidgetData<String>('agenda_overdue_json', enc(overdue));
-      await HomeWidget.saveWidgetData<String>('agenda_today_json', enc(today));
-      await HomeWidget.saveWidgetData<String>('agenda_week_json', enc(week));
-      await HomeWidget.saveWidgetData<String>('agenda_next30_json', enc(next30));
       await HomeWidget.saveWidgetData<String>(
-          'agenda_floating_json', enc(floating));
+          'agenda_combined_json', jsonEncode(combined));
+      await HomeWidget.saveWidgetData<String>(
+          'agenda_header_indices', jsonEncode(headerIndices));
 
       await HomeWidget.saveWidgetData<String>('agenda_vault_name', vaultName);
       await HomeWidget.saveWidgetData<String>('agenda_vault_path', vaultPath);
