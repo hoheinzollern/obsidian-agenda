@@ -85,7 +85,7 @@ Version=1.0
 Type=Application
 Name=Obsidian Agenda
 Comment=Org-agenda-style dashboard for your Obsidian vault
-Exec=$INSTALL_DIR/$APP_NAME
+Exec=$WRAPPER
 Icon=$INSTALL_DIR/data/flutter_assets/assets/icon/icon.png
 Terminal=false
 Categories=Utility;Office;
@@ -97,7 +97,7 @@ green "[ok] Installed $APP_NAME"
 # PATH hint for non-root installs.
 if [[ "$EUID" -ne 0 ]] && ! printf '%s' ":$PATH:" | grep -q ":$BIN_DIR:"; then
   echo
-  yellow "!  $BIN_DIR is not on your PATH. Add this to your shell rc:"
+  yellow "!  $BIN_DIR is not on your PATH. Add this to your shell profile:"
   echo "    export PATH=\"$BIN_DIR:\$PATH\""
 fi
 
