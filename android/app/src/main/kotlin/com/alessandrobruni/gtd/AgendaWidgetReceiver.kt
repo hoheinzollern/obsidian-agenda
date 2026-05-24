@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 import org.json.JSONObject
@@ -92,6 +93,14 @@ class AgendaWidgetReceiver : HomeWidgetProvider() {
                 Uri.parse("obsidian-agenda://quick-add"),
             )
             views.setOnClickPendingIntent(R.id.widget_add_inbox, quickAddPi)
+
+            // Refresh icon → background callback that re-scans the
+            // vault and re-pushes widget data without surfacing UI.
+            val refreshPi = HomeWidgetBackgroundIntent.getBroadcast(
+                context,
+                Uri.parse("obsidian-agenda://refresh"),
+            )
+            views.setOnClickPendingIntent(R.id.widget_refresh, refreshPi)
 
             appWidgetManager.updateAppWidget(widgetId, views)
             appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)

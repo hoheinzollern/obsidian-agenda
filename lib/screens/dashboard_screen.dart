@@ -7,6 +7,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 
 import '../models/task.dart';
+import '../services/notification_service.dart';
 import '../services/obsidian_launcher.dart';
 import '../services/widget_service.dart';
 import '../services/settings_service.dart';
@@ -31,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _writer = TaskWriter();
   final _launcher = ObsidianLauncher();
   final _widget = WidgetService();
+  final _notif = NotificationService();
   final _scrollController = ScrollController();
   final Map<String, GlobalKey> _sectionKeys = {
     'overdue': GlobalKey(),
@@ -51,6 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String? _vaultPath;
   bool _useAdvancedUri = false;
+  bool _sortByFile = false;
   Set<String> _collapsed = <String>{};
   // In-memory only — cleared on app restart.
   final Set<String> _activeTagFilters = <String>{};
@@ -80,6 +83,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       if (!_activeDateFilters.remove(day)) _activeDateFilters.add(day);
     });
+  }
+
+  String _buildNotificationBody() {
+    final parts = <String>[];
+    if (_overdue.isNotEmpty) parts.add('⚠️ ${_overdue.length} overdue');
+    parts.add('📅 ${_todayTasks.length} today');
+    if (_thisWeek.isNotEmpty) parts.add('📆 ${_thisWeek.length} this week');
+    return parts.join(' · ');
   }
 
   bool _passesFilter(Task t) {
@@ -141,10 +152,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final path = await _settings.getVaultPath();
     final adv = await _settings.getUseAdvancedUri();
     final collapsed = await _settings.getCollapsedSections();
+    final sortByFile = await _settings.getSortByFile();
     setState(() {
       _vaultPath = path;
       _useAdvancedUri = adv;
       _collapsed = collapsed;
+      _sortByFile = sortByFile;
     });
     if (path == null) {
       setState(() => _loading = false);
@@ -208,6 +221,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         useAdvancedUri: _useAdvancedUri,
         opacity: opacity,
       );
+
+      // Reschedule (or cancel) the daily notification with fresh counts.
+      if (await _settings.getNotifyEnabled()) {
+        final h = await _settings.getNotifyHour();
+        final m = await _settings.getNotifyMinute();
+        final body = _buildNotificationBody();
+        await _notif.schedule(hour: h, minute: m, body: body);
+      } else {
+        await _notif.cancel();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -356,9 +379,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<Task> get _floating =>
       _open.where((t) => t.dueDate == null && t.scheduledDate == null).toList()
-        ..sort((a, b) => a.priority.rank.compareTo(b.priority.rank));
+        ..sort(_sortByFile
+            ? _byFileThenPriority
+            : (a, b) => a.priority.rank.compareTo(b.priority.rank));
 
   int _byDueThenPriority(Task a, Task b) {
+    if (_sortByFile) return _byFileThenPriority(a, b);
     final ad = a.dueDate ?? a.scheduledDate;
     final bd = b.dueDate ?? b.scheduledDate;
     if (ad != null && bd != null) {
@@ -369,6 +395,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (bd != null) {
       return 1;
     }
+    return a.priority.rank.compareTo(b.priority.rank);
+  }
+
+  int _byFileThenPriority(Task a, Task b) {
+    final c = a.sourceLabel.toLowerCase().compareTo(b.sourceLabel.toLowerCase());
+    if (c != 0) return c;
+    // Within the same file, fall back to line order so tasks appear in
+    // the same sequence as in the source markdown.
+    final l = a.lineNumber.compareTo(b.lineNumber);
+    if (l != 0) return l;
     return a.priority.rank.compareTo(b.priority.rank);
   }
 
@@ -397,6 +433,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           appBar: AppBar(
             title: const Text('Agenda'),
             actions: [
+              IconButton(
+                icon: Icon(_sortByFile
+                    ? Icons.folder_outlined
+                    : Icons.event_outlined),
+                tooltip: _sortByFile
+                    ? 'Sorted by file — switch to by date'
+                    : 'Sorted by date — switch to by file',
+                onPressed: _vaultPath == null
+                    ? null
+                    : () async {
+                        await _settings.setSortByFile(!_sortByFile);
+                        setState(() => _sortByFile = !_sortByFile);
+                      },
+              ),
               IconButton(
                 icon: const Icon(Icons.calendar_month),
                 tooltip: 'Calendar view',

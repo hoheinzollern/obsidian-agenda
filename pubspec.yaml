@@ -23,6 +23,8 @@ dependencies:
   file_selector: ^1.0.3
   table_calendar: ^3.1.3
   args: ^2.5.0
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
   # 0.8 transitively pulls androidx.glance:glance-appwidget which needs
   # compileSdk 37 + AGP 9.1; pinning to 0.7 keeps us on the RemoteViews
   # path that our AgendaWidgetReceiver actually uses.

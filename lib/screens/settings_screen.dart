@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/notification_service.dart';
 import '../services/settings_service.dart';
 import '../services/widget_service.dart';
 import '../widgets/android_folder_picker.dart';
@@ -24,6 +25,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _useAdvancedUri = false;
   int _widgetOpacity = 90;
+  bool _notifyEnabled = false;
+  int _notifyHour = 8;
+  int _notifyMinute = 0;
   String? _validationError;
 
   @override
@@ -42,12 +46,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final p = await _settings.getVaultPath();
     final adv = await _settings.getUseAdvancedUri();
     final op = await _settings.getWidgetOpacity();
+    final notifyEnabled = await _settings.getNotifyEnabled();
+    final notifyHour = await _settings.getNotifyHour();
+    final notifyMinute = await _settings.getNotifyMinute();
     if (!mounted) return;
     setState(() {
       _savedPath = p;
       _controller.text = p ?? _suggestedDefault();
       _useAdvancedUri = adv;
       _widgetOpacity = op;
+      _notifyEnabled = notifyEnabled;
+      _notifyHour = notifyHour;
+      _notifyMinute = notifyMinute;
       _loading = false;
     });
   }
@@ -81,6 +91,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // dart:io browser, the others use the OS-native NSOpenPanel /
   // GtkFileChooser via file_selector.
   bool get _nativePickerSupported => true;
+
+  String _formatTime(int h, int m) =>
+      '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
 
   Future<void> _pickFolder() async {
     final String? path = Platform.isAndroid
@@ -200,7 +213,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _useAdvancedUri = v);
                   },
                 ),
-                if (Platform.isAndroid) ...[
+                if (NotificationService.supported) ...[
+                  const Divider(height: 32),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Daily agenda notification'),
+                    subtitle: Text(
+                      _notifyEnabled
+                          ? 'Fires at ${_formatTime(_notifyHour, _notifyMinute)} with today\'s + overdue counts.'
+                          : 'Off.',
+                    ),
+                    value: _notifyEnabled,
+                    onChanged: (v) async {
+                      if (v) {
+                        final granted = await NotificationService().requestPermission();
+                        if (!granted) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Notification permission denied. Grant it in system settings.'),
+                            ),
+                          );
+                          return;
+                        }
+                      } else {
+                        await NotificationService().cancel();
+                      }
+                      await _settings.setNotifyEnabled(v);
+                      if (!mounted) return;
+                      setState(() => _notifyEnabled = v);
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    enabled: _notifyEnabled,
+                    title: const Text('Notification time'),
+                    subtitle: Text(_formatTime(_notifyHour, _notifyMinute)),
+                    trailing: const Icon(Icons.access_time),
+                    onTap: !_notifyEnabled
+                        ? null
+                        : () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(
+                                  hour: _notifyHour, minute: _notifyMinute),
+                            );
+                            if (picked == null) return;
+                            await _settings.setNotifyTime(picked.hour, picked.minute);
+                            if (!mounted) return;
+                            setState(() {
+                              _notifyHour = picked.hour;
+                              _notifyMinute = picked.minute;
+                            });
+                          },
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final granted = await NotificationService().requestPermission();
+                        if (!granted && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Permission denied.')),
+                          );
+                          return;
+                        }
+                        await NotificationService().showNow(
+                          title: "Today's agenda",
+                          body: 'Test notification — looks like this every morning.',
+                        );
+                      },
+                      icon: const Icon(Icons.notifications_active, size: 18),
+                      label: const Text('Send test notification now'),
+                    ),
+                  ),
                   const Divider(height: 32),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
