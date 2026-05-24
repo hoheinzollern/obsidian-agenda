@@ -93,6 +93,8 @@ jobs:
       - name: Tar the bundle
         run: |
           mkdir -p artifacts
+          cp linux/install.sh build/linux/x64/release/bundle/install.sh
+          chmod +x build/linux/x64/release/bundle/install.sh
           cd build/linux/x64/release/bundle
           tar -czf "$GITHUB_WORKSPACE/artifacts/obsidian-agenda-${{ github.ref_name }}-linux-x64.tar.gz" .
 
